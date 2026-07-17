@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    container_name: tg-scraper-web
+    restart: unless-stopped
+    ports:
+      - "37773:8000"
+    environment:
+      - TG_SCRAPER_ACCOUNTS_PATH=/data/accounts.jsonl
+    volumes:
+      - ./accounts.jsonl:/data/accounts.jsonl:ro

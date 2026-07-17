@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TG Scraper — поиск по био</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <h1>Поиск аккаунтов по биографии</h1>
+      <p class="subtitle">Ключевые слова ищутся в поле «bio» ранее собранных аккаунтов.</p>
+    </header>
+
+    <form class="search-form" method="get" action="/">
+      <div class="field field-grow">
+        <label for="q">Ключевые слова</label>
+        <input
+          type="text"
+          id="q"
+          name="q"
+          placeholder="crypto, manager, iGaming"
+          value="{{ q }}"
+          autofocus
+        >
+        <span class="hint">через запятую — несколько слов</span>
+      </div>
+
+      <div class="field-options">
+        <label class="checkbox">
+          <input type="checkbox" name="match_all" value="true" {% if match_all %}checked{% endif %}>
+          Все слова сразу (AND)
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="case_sensitive" value="true" {% if case_sensitive %}checked{% endif %}>
+          Учитывать регистр
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="regex" value="true" {% if regex %}checked{% endif %}>
+          Regex
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Искать</button>
+    </form>
+
+    {% if error %}
+      <div class="banner banner-error">{{ error }}</div>
+    {% elif searched %}
+      <div class="results">
+        <div class="results-summary">
+          <div class="summary-count">
+            <span class="count-number">{{ match_count }}</span>
+            <span class="count-label">найдено из {{ total_accounts }} аккаунтов</span>
+          </div>
+          {% if match_count > 0 %}
+            <a class="btn btn-secondary" href="{{ download_url }}" download>Скачать все ({{ match_count }})</a>
+          {% endif %}
+        </div>
+
+        {% if truncated %}
+          <div class="banner banner-info">
+            Показаны первые {{ display_limit }} из {{ match_count }}. Остальные доступны в скачиваемом файле.
+          </div>
+        {% endif %}
+
+        {% if matches %}
+          <ul class="account-list">
+            {% for account in matches %}
+              <li class="account-card">
+                <div class="account-head">
+                  <span class="account-name">{{ account.display_name }}</span>
+                  {% if account.username %}
+                    <a class="account-username" href="https://t.me/{{ account.username }}" target="_blank" rel="noopener">@{{ account.username }}</a>
+                  {% endif %}
+                  <span class="account-id">id {{ account.id }}</span>
+                  {% if account.is_bot %}<span class="badge badge-bot">bot</span>{% endif %}
+                </div>
+
+                {% if account.bio %}
+                  <p class="account-bio">{{ account.bio }}</p>
+                {% else %}
+                  <p class="account-bio account-bio-empty">без описания</p>
+                {% endif %}
+
+                {% if account.seen_in_chats %}
+                  <div class="account-chats">
+                    <span class="chats-label">Чаты ({{ account.seen_in_chats|length }}):</span>
+                    <div class="chat-tags">
+                      {% for chat in account.seen_in_chats|sort %}
+                        <span class="chat-tag">{{ chat }}</span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% elif match_count == 0 %}
+          <div class="banner banner-info">Ничего не найдено.</div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

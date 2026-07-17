@@ -1,0 +1,36 @@
+[project]
+name = "tg-scraper"
+version = "0.1.0"
+description = "Collects Telegram chat participants (anyone who sent at least one message) and lets you search their profile bios by keyword."
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "telethon (>=1.36,<2.0)",
+    "python-dotenv (>=1.0,<2.0)",
+    "click (>=8.1,<9.0)",
+    "fastapi (>=0.139.2,<0.140.0)",
+    "uvicorn (>=0.51.0,<0.52.0)",
+    "jinja2 (>=3.1.6,<4.0.0)",
+    "python-multipart (>=0.0.32,<0.0.33)",
+]
+
+[tool.poetry]
+packages = [{ include = "tg_scraper" }, { include = "webapp" }]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+black = "*"
+isort = "*"
+ruff = "*"
+
+[project.scripts]
+tg-scraper = "tg_scraper.cli:main"
+tg-scraper-web = "webapp.main:run"
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
