@@ -4,7 +4,7 @@ services:
     container_name: tg-scraper-web
     restart: unless-stopped
     ports:
-      - "37773:8000"
+      - "37773:8989"
     environment:
       - TG_SCRAPER_ACCOUNTS_PATH=/data/accounts.jsonl
     volumes:
