@@ -43,3 +43,19 @@ def test_regex_mode():
 
 def test_empty_keywords_returns_no_matches():
     assert search_by_keywords(make_accounts(), []) == []
+
+
+def test_whole_word_excludes_partial_matches():
+    accounts = [
+        Account(id=1, bio="AU citizen"),
+        Account(id=2, bio="Works in AUTH department"),
+        Account(id=3, bio="BAU manager"),
+    ]
+    matches = search_by_keywords(accounts, ["AU"], whole_word=True)
+    assert {a.id for a in matches} == {1}
+
+
+def test_whole_word_false_still_matches_substrings():
+    accounts = [Account(id=1, bio="Works in AUTH department")]
+    matches = search_by_keywords(accounts, ["AU"], whole_word=False)
+    assert {a.id for a in matches} == {1}

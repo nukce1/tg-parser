@@ -35,7 +35,7 @@ def parse_keywords(raw: str) -> list[str]:
 
 
 def run_search(
-    keywords_raw: str, *, match_all: bool, case_sensitive: bool, regex: bool
+    keywords_raw: str, *, match_all: bool, case_sensitive: bool, regex: bool, whole_word: bool
 ) -> tuple[list[Account], int, list[str]]:
     """Load accounts.jsonl and return (matches, total_accounts_on_file, keywords)."""
     keywords = parse_keywords(keywords_raw)
@@ -48,11 +48,12 @@ def run_search(
         match_all=match_all,
         case_sensitive=case_sensitive,
         regex=regex,
+        whole_word=whole_word,
     )
     return matches, len(accounts), keywords
 
 
-def build_query(q: str, match_all: bool, case_sensitive: bool, regex: bool) -> str:
+def build_query(q: str, match_all: bool, case_sensitive: bool, regex: bool, whole_word: bool) -> str:
     params: dict[str, str] = {"q": q}
     if match_all:
         params["match_all"] = "true"
@@ -60,6 +61,8 @@ def build_query(q: str, match_all: bool, case_sensitive: bool, regex: bool) -> s
         params["case_sensitive"] = "true"
     if regex:
         params["regex"] = "true"
+    if whole_word:
+        params["whole_word"] = "true"
     return urlencode(params)
 
 
@@ -70,6 +73,7 @@ def index(
     match_all: bool = Query(default=False),
     case_sensitive: bool = Query(default=False),
     regex: bool = Query(default=False),
+    whole_word: bool = Query(default=False),
 ) -> HTMLResponse:
     searched = bool(q.strip())
     matches: list[Account] = []
@@ -82,14 +86,18 @@ def index(
         else:
             try:
                 matches, total_accounts, _ = run_search(
-                    q, match_all=match_all, case_sensitive=case_sensitive, regex=regex
+                    q,
+                    match_all=match_all,
+                    case_sensitive=case_sensitive,
+                    regex=regex,
+                    whole_word=whole_word,
                 )
             except Exception as exc:  # noqa: BLE001 - surfaced to the user, e.g. bad regex
                 error = f"Ошибка поиска: {exc}"
 
     display_matches = matches[:DISPLAY_LIMIT]
     truncated = len(matches) > DISPLAY_LIMIT
-    download_url = "/download?" + build_query(q, match_all, case_sensitive, regex)
+    download_url = "/download?" + build_query(q, match_all, case_sensitive, regex, whole_word)
 
     return templates.TemplateResponse(
         request,
@@ -99,6 +107,7 @@ def index(
             "match_all": match_all,
             "case_sensitive": case_sensitive,
             "regex": regex,
+            "whole_word": whole_word,
             "searched": searched,
             "error": error,
             "total_accounts": total_accounts,
@@ -117,11 +126,14 @@ def download(
     match_all: bool = Query(default=False),
     case_sensitive: bool = Query(default=False),
     regex: bool = Query(default=False),
+    whole_word: bool = Query(default=False),
 ) -> Response:
     """Export every matching account (no display cap) as a JSON file."""
     matches: list[Account] = []
     if q.strip() and ACCOUNTS_PATH.exists():
-        matches, _, _ = run_search(q, match_all=match_all, case_sensitive=case_sensitive, regex=regex)
+        matches, _, _ = run_search(
+            q, match_all=match_all, case_sensitive=case_sensitive, regex=regex, whole_word=whole_word
+        )
 
     payload = json.dumps([account.to_dict() for account in matches], ensure_ascii=False, indent=2)
     return Response(

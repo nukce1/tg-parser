@@ -40,6 +40,10 @@
           <input type="checkbox" name="regex" value="true" {% if regex %}checked{% endif %}>
           Regex
         </label>
+        <label class="checkbox">
+          <input type="checkbox" name="whole_word" value="true" {% if whole_word %}checked{% endif %}>
+          Слово целиком
+        </label>
       </div>
 
       <button type="submit" class="btn btn-primary">Искать</button>

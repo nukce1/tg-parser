@@ -199,6 +199,7 @@ def collect(
 @click.option("--match-all", is_flag=True, help="Require every keyword to match (default: any).")
 @click.option("--case-sensitive", is_flag=True)
 @click.option("--regex", is_flag=True, help="Treat keywords as regular expressions.")
+@click.option("--whole-word", is_flag=True, help="Only match a keyword as a whole word.")
 @click.option("--output", "output_path", default=None, help="Optionally save matches to a JSON Lines file.")
 def search(
     input_path: str,
@@ -206,6 +207,7 @@ def search(
     match_all: bool,
     case_sensitive: bool,
     regex: bool,
+    whole_word: bool,
     output_path: str | None,
 ) -> None:
     """Search previously collected accounts' bios for keyword matches."""
@@ -216,6 +218,7 @@ def search(
         match_all=match_all,
         case_sensitive=case_sensitive,
         regex=regex,
+        whole_word=whole_word,
     )
 
     for account in matches:
