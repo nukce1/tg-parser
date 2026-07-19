@@ -307,7 +307,7 @@ async def _iter_with_flood_retry(
                 await asyncio.sleep(delay)
 
 
-MESSAGE_SCAN_TIME_LIMIT = 20 * 60
+MESSAGE_SCAN_TIME_LIMIT = 10 * 60
 
 
 async def collect_chat_sender_ids(
