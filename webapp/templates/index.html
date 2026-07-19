@@ -29,6 +29,10 @@
 
       <div class="field-options">
         <label class="checkbox">
+          <input type="checkbox" name="search_username" value="true" {% if search_username %}checked{% endif %}>
+          Искать по username
+        </label>
+        <label class="checkbox">
           <input type="checkbox" name="match_all" value="true" {% if match_all %}checked{% endif %}>
           Все слова сразу (AND)
         </label>

@@ -2,7 +2,7 @@
 
 Reuses tg_scraper.storage/search as-is (the same functions the `tg-scraper
 search` CLI command calls) — this is a read-only view over an
-already-collected accounts.jsonl, it never touches the Telegram API itself.
+already-collected accounts.db, it never touches the Telegram API itself.
 """
 
 from __future__ import annotations
@@ -19,10 +19,10 @@ from fastapi.templating import Jinja2Templates
 
 from tg_scraper.models import Account
 from tg_scraper.search import search_by_keywords
-from tg_scraper.storage import load_accounts
+from tg_scraper.storage import connect, load_accounts
 
 BASE_DIR = Path(__file__).resolve().parent
-ACCOUNTS_PATH = Path(os.getenv("TG_SCRAPER_ACCOUNTS_PATH", "accounts.jsonl"))
+ACCOUNTS_PATH = Path(os.getenv("TG_SCRAPER_ACCOUNTS_PATH", "accounts.db"))
 DISPLAY_LIMIT = 100
 
 app = FastAPI(title="TG Scraper Search")
@@ -35,11 +35,21 @@ def parse_keywords(raw: str) -> list[str]:
 
 
 def run_search(
-    keywords_raw: str, *, match_all: bool, case_sensitive: bool, regex: bool, whole_word: bool
+    keywords_raw: str,
+    *,
+    match_all: bool,
+    case_sensitive: bool,
+    regex: bool,
+    whole_word: bool,
+    search_username: bool,
 ) -> tuple[list[Account], int, list[str]]:
-    """Load accounts.jsonl and return (matches, total_accounts_on_file, keywords)."""
+    """Load accounts.db and return (matches, total_accounts_on_file, keywords)."""
     keywords = parse_keywords(keywords_raw)
-    accounts = load_accounts(ACCOUNTS_PATH)
+    conn = connect(ACCOUNTS_PATH)
+    try:
+        accounts = load_accounts(conn)
+    finally:
+        conn.close()
     if not keywords:
         return [], len(accounts), keywords
     matches = search_by_keywords(
@@ -49,11 +59,14 @@ def run_search(
         case_sensitive=case_sensitive,
         regex=regex,
         whole_word=whole_word,
+        search_username=search_username,
     )
     return matches, len(accounts), keywords
 
 
-def build_query(q: str, match_all: bool, case_sensitive: bool, regex: bool, whole_word: bool) -> str:
+def build_query(
+    q: str, match_all: bool, case_sensitive: bool, regex: bool, whole_word: bool, search_username: bool
+) -> str:
     params: dict[str, str] = {"q": q}
     if match_all:
         params["match_all"] = "true"
@@ -63,6 +76,8 @@ def build_query(q: str, match_all: bool, case_sensitive: bool, regex: bool, whol
         params["regex"] = "true"
     if whole_word:
         params["whole_word"] = "true"
+    if search_username:
+        params["search_username"] = "true"
     return urlencode(params)
 
 
@@ -74,6 +89,7 @@ def index(
     case_sensitive: bool = Query(default=False),
     regex: bool = Query(default=False),
     whole_word: bool = Query(default=False),
+    search_username: bool = Query(default=False),
 ) -> HTMLResponse:
     searched = bool(q.strip())
     matches: list[Account] = []
@@ -82,7 +98,7 @@ def index(
 
     if searched:
         if not ACCOUNTS_PATH.exists():
-            error = f"Файл с аккаунтами не найден: {ACCOUNTS_PATH}. Сначала запустите `tg-scraper collect`."
+            error = f"База с аккаунтами не найдена: {ACCOUNTS_PATH}. Сначала запустите `tg-scraper collect`."
         else:
             try:
                 matches, total_accounts, _ = run_search(
@@ -91,13 +107,14 @@ def index(
                     case_sensitive=case_sensitive,
                     regex=regex,
                     whole_word=whole_word,
+                    search_username=search_username,
                 )
             except Exception as exc:  # noqa: BLE001 - surfaced to the user, e.g. bad regex
                 error = f"Ошибка поиска: {exc}"
 
     display_matches = matches[:DISPLAY_LIMIT]
     truncated = len(matches) > DISPLAY_LIMIT
-    download_url = "/download?" + build_query(q, match_all, case_sensitive, regex, whole_word)
+    download_url = "/download?" + build_query(q, match_all, case_sensitive, regex, whole_word, search_username)
 
     return templates.TemplateResponse(
         request,
@@ -108,6 +125,7 @@ def index(
             "case_sensitive": case_sensitive,
             "regex": regex,
             "whole_word": whole_word,
+            "search_username": search_username,
             "searched": searched,
             "error": error,
             "total_accounts": total_accounts,
@@ -127,12 +145,18 @@ def download(
     case_sensitive: bool = Query(default=False),
     regex: bool = Query(default=False),
     whole_word: bool = Query(default=False),
+    search_username: bool = Query(default=False),
 ) -> Response:
     """Export every matching account (no display cap) as a JSON file."""
     matches: list[Account] = []
     if q.strip() and ACCOUNTS_PATH.exists():
         matches, _, _ = run_search(
-            q, match_all=match_all, case_sensitive=case_sensitive, regex=regex, whole_word=whole_word
+            q,
+            match_all=match_all,
+            case_sensitive=case_sensitive,
+            regex=regex,
+            whole_word=whole_word,
+            search_username=search_username,
         )
 
     payload = json.dumps([account.to_dict() for account in matches], ensure_ascii=False, indent=2)

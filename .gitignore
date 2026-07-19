@@ -11,3 +11,4 @@ chats.jsonl
 .ruff_cache/
 .pytest_cache/
 .claude/
+accounts.db

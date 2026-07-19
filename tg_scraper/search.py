@@ -16,8 +16,9 @@ def search_by_keywords(
     case_sensitive: bool = False,
     regex: bool = False,
     whole_word: bool = False,
+    search_username: bool = False,
 ) -> list[Account]:
-    """Return accounts whose bio matches the given keywords.
+    """Return accounts whose bio (or username) matches the given keywords.
 
     match_all=False (default): matches if ANY keyword is found (OR).
     match_all=True: matches only if ALL keywords are found (AND).
@@ -25,6 +26,8 @@ def search_by_keywords(
     a plain substring.
     whole_word=True: only match the keyword as a whole word, e.g. "AU"
     matches "AU citizen" but not "AUTH" or "BAU".
+    search_username=True: match against the account's username instead of
+    its bio.
     """
     keywords = [kw for kw in keywords if kw]
     if not keywords:
@@ -40,9 +43,10 @@ def search_by_keywords(
 
     matches = []
     for account in accounts:
-        if not account.bio:
+        field = account.username if search_username else account.bio
+        if not field:
             continue
-        hits = [bool(pattern.search(account.bio)) for pattern in patterns]
+        hits = [bool(pattern.search(field)) for pattern in patterns]
         if (match_all and all(hits)) or (not match_all and any(hits)):
             matches.append(account)
     return matches

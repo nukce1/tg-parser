@@ -59,3 +59,18 @@ def test_whole_word_false_still_matches_substrings():
     accounts = [Account(id=1, bio="Works in AUTH department")]
     matches = search_by_keywords(accounts, ["AU"], whole_word=False)
     assert {a.id for a in matches} == {1}
+
+
+def test_search_username_matches_username_not_bio():
+    accounts = [
+        Account(id=1, username="crypto_dave", bio="no mention here"),
+        Account(id=2, username="plain_bob", bio="crypto enthusiast"),
+    ]
+    matches = search_by_keywords(accounts, ["crypto"], search_username=True)
+    assert {a.id for a in matches} == {1}
+
+
+def test_search_username_skips_accounts_without_username():
+    accounts = [Account(id=1, username=None, bio="crypto trader")]
+    matches = search_by_keywords(accounts, ["crypto"], search_username=True)
+    assert matches == []

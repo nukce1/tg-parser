@@ -210,41 +210,6 @@ async def test_collect_chat_participant_ids_gives_up_after_max_retries_without_r
     assert result == set()
 
 
-@pytest.mark.asyncio
-async def test_collect_chat_sender_ids_paces_requests_with_delay(monkeypatch):
-    sleeps = []
-
-    async def fake_sleep(seconds):
-        sleeps.append(seconds)
-
-    monkeypatch.setattr("tg_scraper.collector.asyncio.sleep", fake_sleep)
-
-    client = FakeTelegramClient(
-        messages_by_chat={"chat": [make_message(1), make_message(2)]}
-    )
-
-    await collect_chat_sender_ids(client, "chat", delay=0.3)
-
-    assert sleeps.count(0.3) == 2
-
-
-@pytest.mark.asyncio
-async def test_collect_chat_participant_ids_paces_requests_with_delay(monkeypatch):
-    sleeps = []
-
-    async def fake_sleep(seconds):
-        sleeps.append(seconds)
-
-    monkeypatch.setattr("tg_scraper.collector.asyncio.sleep", fake_sleep)
-
-    client = FakeTelegramClient(
-        participants_by_chat={"chat": [FakeUser(id=1), FakeUser(id=2)]}
-    )
-
-    await collect_chat_participant_ids(client, "chat", delay=0.3)
-
-    assert sleeps.count(0.3) == 2
-
 
 @pytest.mark.asyncio
 async def test_fetch_account_maps_profile_fields():

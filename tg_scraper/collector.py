@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from collections.abc import AsyncIterator, Callable, Iterable
 from dataclasses import dataclass
@@ -46,6 +47,7 @@ from telethon.errors import (
     UserNotParticipantError,
 )
 from telethon.tl.functions.channels import GetParticipantRequest, JoinChannelRequest
+from telethon.tl.functions.chatlists import CheckChatlistInviteRequest
 from telethon.tl.functions.messages import CheckChatInviteRequest, ImportChatInviteRequest
 from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.types import ChatInviteAlready, InputPeerSelf
@@ -170,6 +172,81 @@ async def join_chat(
             return JoinResult(False, str(exc))
     logger.error("Giving up joining %s after %s retries", chat, max_retries)
     return JoinResult(False, f"gave up after {max_retries} retries (flood wait)")
+
+
+ADDLIST_LINK_RE = re.compile(r"(?:https?://)?t\.me/addlist/(?P<slug>[A-Za-z0-9_-]+)")
+
+
+def parse_addlist_slug(addlist: str) -> str:
+    """Extract the slug from a t.me/addlist/<slug> chat-folder link.
+
+    Accepts a full URL (with or without scheme) or an already-bare slug and
+    returns just the slug, since that's what `CheckChatlistInviteRequest`
+    expects.
+    """
+    match = ADDLIST_LINK_RE.search(addlist)
+    return match.group("slug") if match else addlist
+
+
+async def resolve_addlist_chats(
+    client: TelegramClientLike,
+    addlist: str,
+    *,
+    max_retries: int = 3,
+    progress: ProgressCallback | None = None,
+) -> list[Any]:
+    """Resolve a t.me/addlist/<slug> chat-folder invite link to the chats inside it.
+
+    A chat-folder link is a different Telegram concept from a regular chat
+    invite link (`t.me/+hash`): `CheckChatlistInviteRequest` enumerates every
+    chat in the folder without joining the folder (or any of its chats)
+    itself — the caller decides what to do with each chat afterwards, e.g.
+    feed it to `join_chat`/`collect_accounts` like any other `--chat` value.
+
+    Each chat is returned as `@username` where the chat is public, or its
+    marked numeric id (e.g. -1001234567890) otherwise. The numeric id form
+    resolves later without another network round trip: Telethon caches every
+    entity returned by any RPC call (including this one) in the client's
+    session, so a subsequent `get_entity`/`iter_participants` call on that id
+    finds it in the cache instead of needing a username to look up.
+    """
+    slug = parse_addlist_slug(addlist)
+    logger.info("Resolving chat folder %s...", addlist)
+    if progress:
+        progress(f"Resolving chat folder {addlist}...")
+
+    result = None
+    for attempt in range(max_retries):
+        try:
+            result = await client(CheckChatlistInviteRequest(slug))
+            break
+        except FloodWaitError as exc:
+            wait = exc.seconds + 1
+            logger.warning("Flood wait while resolving chat folder %s: sleeping %ss", addlist, wait)
+            await asyncio.sleep(wait)
+        except (InviteHashExpiredError, InviteHashInvalidError) as exc:
+            logger.warning("Could not resolve chat folder %s: %s", addlist, exc)
+            if progress:
+                progress(f"Could not resolve chat folder {addlist}: {exc}")
+            return []
+
+    if result is None:
+        logger.error("Giving up resolving chat folder %s after %s retries", addlist, max_retries)
+        if progress:
+            progress(f"Giving up resolving chat folder {addlist} after {max_retries} retries")
+        return []
+
+    resolved: list[Any] = []
+    for chat in result.chats:
+        username = getattr(chat, "username", None)
+        identifier: Any = f"@{username}" if username else utils.get_peer_id(chat)
+        resolved.append(identifier)
+        logger.info("Found chat in folder %s: %s (%s)", addlist, getattr(chat, "title", identifier), identifier)
+
+    logger.info("Resolved %s chat(s) from folder %s", len(resolved), addlist)
+    if progress:
+        progress(f"Resolved {len(resolved)} chat(s) from folder {addlist}")
+    return resolved
 
 
 async def _iter_with_flood_retry(
