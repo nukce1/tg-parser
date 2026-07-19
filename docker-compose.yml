@@ -13,9 +13,10 @@ services:
   collector:
     build: .
     container_name: tg-scraper-collector
-    restart: unless-stopped
-    command: ["sleep", "infinity"]
+    profiles: ["tools"]
+    entrypoint: ["./collector-entrypoint.sh"]
     volumes:
       - ./.env:/app/.env
       - ./tg_finder_1.session:/app/tg_finder_1.session
       - ./accounts.db:/app/accounts.db
+      - ./logs:/app/logs

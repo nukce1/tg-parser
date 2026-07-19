@@ -6,8 +6,9 @@ COPY pyproject.toml poetry.lock ./
 COPY tg_scraper ./tg_scraper
 COPY webapp ./webapp
 COPY main.py ./
+COPY collector-entrypoint.sh ./
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir . && chmod +x collector-entrypoint.sh
 
 EXPOSE 8000
 

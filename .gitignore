@@ -12,3 +12,4 @@ chats.jsonl
 .pytest_cache/
 .claude/
 accounts.db
+logs/
