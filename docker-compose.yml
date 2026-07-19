@@ -9,3 +9,13 @@ services:
       - TG_SCRAPER_ACCOUNTS_PATH=/data/accounts.db
     volumes:
       - ./accounts.db:/data/accounts.db:ro
+
+  collector:
+    build: .
+    container_name: tg-scraper-collector
+    restart: unless-stopped
+    entrypoint: ["sleep", "infinity"]
+    volumes:
+      - ./.env:/app/.env
+      - ./tg_finder_1.session:/app/tg_finder_1.session
+      - ./accounts.db:/app/accounts.db
