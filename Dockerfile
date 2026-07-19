@@ -5,6 +5,7 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 COPY tg_scraper ./tg_scraper
 COPY webapp ./webapp
+COPY main.py ./
 
 RUN pip install --no-cache-dir .
 

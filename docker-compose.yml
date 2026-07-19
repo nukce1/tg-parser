@@ -14,7 +14,7 @@ services:
     build: .
     container_name: tg-scraper-collector
     restart: unless-stopped
-    entrypoint: ["sleep", "infinity"]
+    command: ["sleep", "infinity"]
     volumes:
       - ./.env:/app/.env
       - ./tg_finder_1.session:/app/tg_finder_1.session
