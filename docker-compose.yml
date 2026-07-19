@@ -6,6 +6,6 @@ services:
     ports:
       - "37773:8989"
     environment:
-      - TG_SCRAPER_ACCOUNTS_PATH=/data/accounts.jsonl
+      - TG_SCRAPER_ACCOUNTS_PATH=/data/accounts.db
     volumes:
-      - ./accounts.jsonl:/data/accounts.jsonl:ro
+      - ./accounts.db:/data/accounts.db:ro
