@@ -12,9 +12,11 @@ services:
 
   collector:
     build: .
-    container_name: tg-scraper-collector
     profiles: ["tools"]
     entrypoint: ["./collector-entrypoint.sh"]
+    init: true
+    environment:
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./.env:/app/.env
       - ./tg_finder_1.session:/app/tg_finder_1.session
