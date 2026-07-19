@@ -3,7 +3,7 @@
 set -euo pipefail
 
 name="tg-scraper-collector-$(date +%Y%m%dT%H%M%S)"
-cid=$(docker compose run -d --rm --name "$name" collector "$@")
+cid=$(docker compose run --build -d --rm --name "$name" collector "$@")
 
 echo "Started '${name}' (container ${cid:0:12}) — safe to close this session now."
 echo "Follow live output:  docker logs -f ${name}"
