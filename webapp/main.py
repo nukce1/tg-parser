@@ -7,8 +7,8 @@ already-collected accounts.db, it never touches the Telegram API itself.
 
 from __future__ import annotations
 
-import json
 import os
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -16,6 +16,7 @@ from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from openpyxl import Workbook
 
 from tg_scraper.models import Account
 from tg_scraper.search import search_by_keywords
@@ -138,6 +139,43 @@ def index(
     )
 
 
+ACCOUNT_COLUMNS = (
+    "id",
+    "username",
+    "first_name",
+    "last_name",
+    "phone",
+    "bio",
+    "is_bot",
+    "seen_in_chats",
+    "sources",
+)
+
+
+def accounts_to_xlsx(accounts: list[Account]) -> bytes:
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet("Accounts")
+    ws.append(ACCOUNT_COLUMNS)
+    for account in accounts:
+        row = account.to_dict()
+        ws.append(
+            [
+                row["id"],
+                row["username"],
+                row["first_name"],
+                row["last_name"],
+                row["phone"],
+                row["bio"],
+                row["is_bot"],
+                ", ".join(row["seen_in_chats"]),
+                ", ".join(row["sources"]),
+            ]
+        )
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
 @app.get("/download")
 def download(
     q: str = Query(default=""),
@@ -147,7 +185,7 @@ def download(
     whole_word: bool = Query(default=False),
     search_username: bool = Query(default=False),
 ) -> Response:
-    """Export every matching account (no display cap) as a JSON file."""
+    """Export every matching account (no display cap) as an XLSX file."""
     matches: list[Account] = []
     if q.strip() and ACCOUNTS_PATH.exists():
         matches, _, _ = run_search(
@@ -159,11 +197,11 @@ def download(
             search_username=search_username,
         )
 
-    payload = json.dumps([account.to_dict() for account in matches], ensure_ascii=False, indent=2)
+    payload = accounts_to_xlsx(matches)
     return Response(
         content=payload,
-        media_type="application/json",
-        headers={"Content-Disposition": 'attachment; filename="search_results.json"'},
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="search_results.xlsx"'},
     )
 
 
